@@ -309,6 +309,13 @@ class DataPreparationModule:
         Returns:
             对应的父文档列表（去重，按相关性排序）
         """
+        # #child_chunks = [
+        #     chunk1,  # 来自红烧肉.md
+        #     chunk2,  # 来自红烧肉.md
+        #     chunk3,  # 来自红烧肉.md
+        #     chunk6,  # 来自糖醋排骨.md（可能因为"肉"相关被召回）
+        #     chunk7,  # 来自糖醋排骨.md
+        #         ]
         # 统计每个父文档被匹配的次数（相关性指标）
         parent_relevance = {}
         parent_docs_map = {}

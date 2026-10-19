@@ -119,7 +119,7 @@ print(f"--> 正在连接到 Milvus: {MILVUS_URI}")
 connections.connect(uri=MILVUS_URI)
 
 print("--> 正在初始化 SigLIP 嵌入模型...")
-ef = SigLIPEmbeddingFunction(device="cpu")  # 如果有GPU可以改为"cuda"
+ef = SigLIPEmbeddingFunction(device="cuda")  # 如果有GPU可以改为"cuda"
 
 # 4. 创建 Collection
 milvus_client = MilvusClient(uri=MILVUS_URI)

@@ -4,12 +4,23 @@ from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_deepseek import ChatDeepSeek
+from langchain_openai import ChatOpenAI
+
+from dotenv import load_dotenv
+
+
+
+load_dotenv()
+
+
 
 # 初始化 LLM
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    api_key=os.getenv("DEEPSEEK_API_KEY")
-)
+llm = ChatOpenAI(
+    model="qwen3.7-plus",
+    temperature=0,
+    api_key=os.getenv("QWEN_API_KEY"),
+    base_url="https://maas.qianwenaiapi.com/compatible-mode/v1",
+    )
 
 # 1. 定义数据结构
 class PersonInfo(BaseModel):
@@ -21,6 +32,7 @@ class PersonInfo(BaseModel):
 parser = PydanticOutputParser(pydantic_object=PersonInfo)
 
 # 3. 创建提示模板
+
 prompt = PromptTemplate(
     template="请根据以下文本提取信息。\n{format_instructions}\n{text}\n",
     input_variables=["text"],
@@ -33,6 +45,8 @@ prompt = PromptTemplate(
 # print("--------------------------\n")
 
 # 4. 创建处理链
+
+
 chain = prompt | llm | parser
 
 # 5. 定义输入文本并执行调用链

@@ -24,6 +24,9 @@ print(f"图文结合1 vs 纯图像: {sim_2}")
 print(f"图文结合1 vs 纯文本: {sim_3}")
 print(f"图文结合1 vs 图文结合2: {sim_4}")
 
+
+
+
 # 向量信息分析
 print("\n=== 嵌入向量信息 ===")
 print(f"多模态向量维度: {multi_emb_1.shape}")

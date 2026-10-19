@@ -15,6 +15,11 @@ from typing import Sequence
 import torch
 from transformers import AutoTokenizer, AutoModel
 import torch.nn.functional as F
+from langchain_openai import ChatOpenAI
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class ColBERTReranker(BaseDocumentCompressor):
     """ColBERT重排器"""
@@ -134,11 +139,12 @@ hf_bge_embeddings = HuggingFaceBgeEmbeddings(
     model_name="BAAI/bge-large-zh-v1.5"
 )
 
-llm = ChatDeepSeek(
-    model="deepseek-chat", 
-    temperature=0.1, 
-    api_key=os.getenv("DEEPSEEK_API_KEY")
-)
+llm = ChatOpenAI(
+    model="qwen3.7-plus",
+    temperature=0,
+    api_key=os.getenv("QWEN_API_KEY"),
+    base_url="https://maas.qianwenaiapi.com/compatible-mode/v1",
+    )
 
 # 1. 加载和处理文档
 loader = TextLoader("../../data/C4/txt/ai.txt", encoding="utf-8")

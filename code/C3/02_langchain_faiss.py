@@ -9,13 +9,15 @@ texts = [
     "LangChain是一个用于开发由语言模型驱动的应用程序的框架。"
 ]
 docs = [Document(page_content=t) for t in texts]
-embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-zh-v1.5")
+embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-zh-v1.5") ##只是加载模型，还没有编码
 
 # 2. 创建向量存储并保存到本地
 vectorstore = FAISS.from_documents(docs, embeddings)
 
 local_faiss_path = "./faiss_index_store"
-vectorstore.save_local(local_faiss_path)
+vectorstore.save_local(local_faiss_path)   ##`save_local` 保存后目录里有两个文件，就是索引的两个组成部分：
+# `index.faiss` 向量索引结构（聚类信息+向量数据，二进制格式） 数据结构本体 
+# 索引通过聚类分类，提高查找速度，`index.pkl` 文档原文、元数据、向量到文档的映射关系 "第 5 个向量对应哪个原文"的对照表
 
 print(f"FAISS index has been saved to {local_faiss_path}")
 

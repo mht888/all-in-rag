@@ -1,12 +1,14 @@
 import os
-from langchain_deepseek import ChatDeepSeek 
+from langchain_openai import ChatOpenAI
 from langchain_community.document_loaders import BiliBiliLoader
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 import logging
+from dotenv import load_dotenv
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # 1. 初始化视频数据
@@ -72,11 +74,12 @@ metadata_field_info = [
 ]
 
 # 4. 创建自查询检索器
-llm = ChatDeepSeek(
-    model="deepseek-chat", 
-    temperature=0, 
-    api_key=os.getenv("DEEPSEEK_API_KEY")
-    )
+llm = ChatOpenAI(
+    model="glm-4.7-flash-free",
+    temperature=0,
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://aihubmix.com/v1",
+)
 
 retriever = SelfQueryRetriever.from_llm(
     llm=llm,

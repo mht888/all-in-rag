@@ -1,12 +1,14 @@
 import os
-from langchain_deepseek import ChatDeepSeek 
+from langchain_openai import ChatOpenAI
 from langchain_community.document_loaders import BiliBiliLoader
 from langchain.chains.query_constructor.base import AttributeInfo
 from openai import OpenAI
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 import logging
+from dotenv import load_dotenv
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # 1. 初始化视频数据
@@ -73,8 +75,8 @@ metadata_field_info = [
 
 # 4. 初始化LLM客户端
 client = OpenAI(
-    base_url="https://api.deepseek.com",
-    api_key=os.getenv("DEEPSEEK_API_KEY")
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://aihubmix.com/v1",
 )
 
 # 5. 获取所有文档用于排序
@@ -106,7 +108,7 @@ for query in queries:
 JSON指令:"""
     
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model="qwen3.8-flash-free",
         messages=[
             {"role": "user", "content": prompt}
         ],
@@ -115,9 +117,15 @@ JSON指令:"""
     )
     
     try:
-        import json
-        instruction_str = response.choices[0].message.content
-        instruction = json.loads(instruction_str)
+        import json, re
+        instruction_str = response.choices[0].message.content or ""
+        print(f"[调试] 模型原始返回: {instruction_str!r}")
+        # 去掉 markdown 代码围栏，并提取 {...} JSON 部分
+        cleaned = re.sub(r"```(?:json)?", "", instruction_str).strip()
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(0)
+        instruction = json.loads(cleaned)
         print(f"--- 生成的排序指令: {instruction} ---")
 
         sort_by = instruction.get('sort_by')

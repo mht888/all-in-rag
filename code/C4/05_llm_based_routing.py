@@ -3,11 +3,17 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_deepseek import ChatDeepSeek
 from langchain_core.runnables import RunnableBranch
+from langchain_openai import ChatOpenAI
 
-llm = ChatDeepSeek(
-    model="deepseek-chat", 
-    temperature=0, 
-    api_key=os.getenv("DEEPSEEK_API_KEY")
+from dotenv import load_dotenv
+
+load_dotenv()
+
+llm = ChatOpenAI(
+    model="qwen3.7-plus",
+    temperature=0,
+    api_key=os.getenv("QWEN_API_KEY"),
+    base_url="https://maas.qianwenaiapi.com/compatible-mode/v1",
     )
 
 # 1. 设置不同菜系的处理链

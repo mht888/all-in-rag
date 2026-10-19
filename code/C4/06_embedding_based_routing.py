@@ -6,6 +6,11 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnablePassthrough
 from langchain_community.utils.math import cosine_similarity
 import numpy as np
+from langchain_openai import ChatOpenAI
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # 1. 定义路由描述
 sichuan_route_prompt = "你是一位处理川菜的专家。用户的问题是关于麻辣、辛香、重口味的菜肴，例如水煮鱼、麻婆豆腐、鱼香肉丝、宫保鸡丁、花椒、海椒等。"
@@ -20,10 +25,11 @@ route_prompt_embeddings = embeddings.embed_documents(route_prompts)
 print(f"已定义 {len(route_names)} 个路由: {', '.join(route_names)}")
 
 # 2. 定义不同路由的目标链
-llm = ChatDeepSeek(
-    model="deepseek-chat", 
-    temperature=0, 
-    api_key=os.getenv("DEEPSEEK_API_KEY")
+llm = ChatOpenAI(
+    model="qwen3.7-plus",
+    temperature=0,
+    api_key=os.getenv("QWEN_API_KEY"),
+    base_url="https://maas.qianwenaiapi.com/compatible-mode/v1",
     )
 
 # 定义川菜和粤菜处理链

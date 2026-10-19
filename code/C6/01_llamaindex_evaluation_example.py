@@ -12,24 +12,48 @@ from llama_index.core.evaluation import (
 )
 from llama_index.core.evaluation.eval_utils import get_results_df
 from llama_index.core.evaluation import DatasetGenerator, QueryResponseDataset
+from langchain_openai import ChatOpenAI
 
-Settings.llm = DeepSeek(model="deepseek-chat", temperature=0.1, api_key=os.getenv("DEEPSEEK_API_KEY"))
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# 以脚本所在目录为基准，避免运行时工作目录不同导致相对路径失效
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+Settings.llm = ChatOpenAI(
+    model="qwen3.7-plus",
+    temperature=0.1,
+    api_key=os.getenv("QWEN_API_KEY"),
+    base_url="https://maas.qianwenaiapi.com/compatible-mode/v1",
+    timeout=60,  # 单次请求超时，避免服务端不响应时静默等待 10 分钟
+    max_retries=1,
+    )
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en")
 
 async def main():
     # 1. 加载文档
-    reader = SimpleDirectoryReader(input_files=["../../data/C3/pdf/IPCC_AR6_WGII_Chapter03.pdf"])
+    reader = SimpleDirectoryReader(
+        input_files=[
+            os.path.join(BASE_DIR, "..", "..", "data", "C3", "pdf", "IPCC_AR6_WGII_Chapter03.pdf")
+        ]
+    )
     documents = reader.load_data()
 
     # 1.1 加载或生成响应评估数据集
-    if os.path.exists("./c6_response_eval_dataset.json"):
+    dataset_path = os.path.join(BASE_DIR, "c6_response_eval_dataset.json")
+    if os.path.exists(dataset_path):
         print("加载响应评估数据集...")
-        response_eval_dataset = QueryResponseDataset.from_json("./c6_response_eval_dataset.json")
+        response_eval_dataset = QueryResponseDataset.from_json(dataset_path)
     else:
         print("生成响应评估数据集...")
-        dataset_generator = DatasetGenerator.from_documents(documents[:10])  # 减少文档数量
-        response_eval_dataset = await dataset_generator.agenerate_dataset_from_nodes(num=15)  # 减少问题数量
-        response_eval_dataset.save_json("./c6_response_eval_dataset.json")
+        dataset_generator = DatasetGenerator.from_documents(
+            documents[:10],                # 减少文档数量
+            num_questions_per_chunk=1,     # 每块只生成 1 个问题，总请求量从约 165 次降到约 30 次
+            show_progress=True,            # 打印进度，避免误判为卡死
+        )
+        response_eval_dataset = await dataset_generator.agenerate_dataset_from_nodes(num=15)  # 保留 15 条问题
+        response_eval_dataset.save_json(dataset_path)
 
 
 

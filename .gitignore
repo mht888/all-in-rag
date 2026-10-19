@@ -71,3 +71,13 @@ rag/
 # LLM API keys
 *.key
 *.secret
+
+# Docker volumes (Milvus, etcd runtime data)
+code/C3/volumes/
+code/C4/volumes/
+
+# Runtime output files
+data/C3/search_result.png
+
+# Claude local settings
+.claude/

@@ -11,6 +11,7 @@ from langchain_community.chat_models.moonshot import MoonshotChat
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +37,18 @@ class GenerationIntegrationModule:
         """初始化大语言模型"""
         logger.info(f"正在初始化LLM: {self.model_name}")
 
-        api_key = os.getenv("MOONSHOT_API_KEY")
+        api_key = os.getenv("QWEN_API_KEY")
         if not api_key:
-            raise ValueError("请设置 MOONSHOT_API_KEY 环境变量")
+            raise ValueError("请设置 QWEN_API_KEY 环境变量")
 
-        self.llm = MoonshotChat(
-            model=self.model_name,
+        self.llm = ChatOpenAI(
+            model="qwen3.7-plus",  # 或 "qwen-turbo", "qwen-max" 等
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            moonshot_api_key=api_key
+            openai_api_key=api_key,
+            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
+
         
         logger.info("LLM初始化完成")
     
