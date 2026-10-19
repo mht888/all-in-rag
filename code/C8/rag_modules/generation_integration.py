@@ -46,7 +46,9 @@ class GenerationIntegrationModule:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             openai_api_key=api_key,
-            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1"
+            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            timeout=120,
+            max_retries=2
         )
 
         
@@ -309,8 +311,21 @@ class GenerationIntegrationModule:
             | StrOutputParser()
         )
 
-        for chunk in chain.stream(query):
-            yield chunk
+        # 使用invoke获取完整回答，避免stream()的SSE流卡死问题
+        try:
+            logger.info("开始调用LLM生成回答...")
+            response = chain.invoke(query)
+            logger.info(f"LLM回答生成完成，长度: {len(response) if response else 0}")
+            if not response:
+                yield "[回答为空]"
+                return
+            # 逐段输出，模拟流式效果
+            chunk_size = 20
+            for i in range(0, len(response), chunk_size):
+                yield response[i:i+chunk_size]
+        except Exception as e:
+            logger.error(f"生成出错: {e}")
+            yield f"\n[生成中断: {e}]"
 
     def generate_step_by_step_answer_stream(self, query: str, context_docs: List[Document]):
         """
@@ -362,10 +377,23 @@ class GenerationIntegrationModule:
             | StrOutputParser()
         )
 
-        for chunk in chain.stream(query):
-            yield chunk
+        # 使用invoke获取完整回答，避免stream()的SSE流卡死问题
+        try:
+            logger.info("开始调用LLM生成详细回答...")
+            response = chain.invoke(query)
+            logger.info(f"LLM详细回答生成完成，长度: {len(response) if response else 0}")
+            if not response:
+                yield "[回答为空]"
+                return
+            # 逐段输出，模拟流式效果
+            chunk_size = 20
+            for i in range(0, len(response), chunk_size):
+                yield response[i:i+chunk_size]
+        except Exception as e:
+            logger.error(f"生成出错: {e}")
+            yield f"\n[生成中断: {e}]"
 
-    def _build_context(self, docs: List[Document], max_length: int = 2000) -> str:
+    def _build_context(self, docs: List[Document], max_length: int = 6000) -> str:
         """
         构建上下文字符串
         

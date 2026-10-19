@@ -7,6 +7,10 @@ import sys
 import logging
 from pathlib import Path
 
+# 修复Windows终端编码问题
+if sys.platform == 'win32':
+    os.system('chcp 65001 >nul 2>&1')
+
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent))
 
@@ -282,17 +286,22 @@ class RecipeRAGSystem:
                 use_stream = stream_choice != 'n'
 
                 print("\n回答:")
-                if use_stream:
-                    # 流式输出
-                    for chunk in self.ask_question(user_input, stream=True):
-                        print(chunk, end="", flush=True)
-                    print("\n")
-                else:
-                    # 普通输出
-                    answer = self.ask_question(user_input, stream=False)
-                    print(f"{answer}\n")
+                print("-" * 40)
+                try:
+                    if use_stream:
+                        # 流式输出
+                        for chunk in self.ask_question(user_input, stream=True):
+                            print(chunk, end="", flush=True)
+                    else:
+                        # 普通输出
+                        answer = self.ask_question(user_input, stream=False)
+                        print(answer)
+                except Exception as stream_error:
+                    print(f"\n生成回答时出错: {stream_error}")
+                print("-" * 40)
                 
             except KeyboardInterrupt:
+                print("\n检测到退出信号...")
                 break
             except Exception as e:
                 print(f"处理问题时出错: {e}")

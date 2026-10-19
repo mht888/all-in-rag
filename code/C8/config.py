@@ -22,7 +22,7 @@ class RAGConfig:
 
     # 生成配置
     temperature: float = 0.1
-    max_tokens: int = 2048
+    max_tokens: int = 4096
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'RAGConfig':
