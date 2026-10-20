@@ -33,8 +33,8 @@ def main():
         print(f"  路径: {doc.metadata['source']}")
         print("-" * 40)
 
-    # 2. Unstructured 分块
-    chunks = module.chunk_documents(max_characters=1000, overlap=200)
+    # 2. PDF 提取 + 分块
+    chunks = module.chunk_documents(chunk_size=1000, chunk_overlap=200)
 
     print("\n" + "=" * 60)
     print("子块信息 (前 5 个):")
@@ -46,7 +46,7 @@ def main():
         print(f"      doc_name: {chunk.metadata['doc_name']}")
         print(f"      chunk_index: {chunk.metadata['chunk_index']}")
         print(f"      chunk_size: {chunk.metadata['chunk_size']}")
-        print(f"      内容预览: {chunk.page_content[:80]}...")
+        print(f"      内容预览: {chunk.page_content[:200]}...")
         print("-" * 40)
 
     # 3. 统计信息

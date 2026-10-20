@@ -107,31 +107,31 @@ class DataPreparationModule:
         pass
 
     # ------------------------------------------------------------------
-    # 2. Unstructured 分块 + 建立父子关系
+    # 2. PDF 提取 + LangChain 分块 + 建立父子关系
     # ------------------------------------------------------------------
-    def chunk_documents(self, max_characters: int = 1000, overlap: int = 200) -> List[Document]:
+    def chunk_documents(self, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
         """
-        使用 Unstructured 对每个父文档进行分块，并建立父子关系
+        使用 Unstructured (fast) 提取文字 + LangChain RecursiveCharacterTextSplitter 分块
 
-        流程（参考 C2 的 01_unstructured_example.py）：
-          1. partition_pdf 提取 PDF 元素（标题/段落/表格等）
-          2. 使用原生 chunk_by_title 按标题元素切分章节
+        流程：
+          1. partition_pdf (fast) 提取 PDF 纯文字
+          2. RecursiveCharacterTextSplitter 按段落/句子边界分块
           3. 每个子块建立与父文档的映射关系
 
         Args:
-            max_characters: 每个子块的最大字符数
-            overlap: 子块之间的重叠字符数
+            chunk_size: 每个子块的最大字符数
+            chunk_overlap: 子块之间的重叠字符数
 
         Returns:
             子块列表
         """
         from unstructured.partition.pdf import partition_pdf
-        from unstructured.chunking.title import chunk_by_title
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
 
         if not self.documents:
             raise ValueError("请先调用 load_documents() 加载文档")
 
-        logger.info("开始使用 Unstructured 进行分块...")
+        logger.info("开始提取文字并分块...")
 
         all_chunks = []
 
@@ -142,33 +142,38 @@ class DataPreparationModule:
 
             logger.info(f"[{doc_idx + 1}/{len(self.documents)}] 正在解析: {doc_name}")
 
-            # ---- Unstructured 解析 PDF（使用 hi_res 策略识别结构） ----
+            # ---- Unstructured 提取文字（fast 策略，基于 pdfminer） ----
             try:
                 elements = partition_pdf(
                     filename=pdf_path,
-                    strategy="hi_res",     # hi_res: 版面分析，识别标题/表格/图片等元素类型
+                    strategy="fast",       # fast: 基于 pdfminer，直接提取文字，速度快
                     languages=["chi_sim", "eng"],
                 )
-                logger.info(f"  解析得到 {len(elements)} 个元素")
+                # 拼接所有元素为完整文本
+                full_text = "\n".join(str(elem).strip() for elem in elements if str(elem).strip())
+                logger.info(f"  提取到 {len(full_text)} 个字符")
             except Exception as e:
-                logger.warning(f"  Unstructured 解析失败: {e}，跳过该文档")
+                logger.warning(f"  PDF 提取失败: {e}，跳过该文档")
                 continue
 
-            # ---- 使用原生 chunk_by_title 按标题边界分块 ----
-            try:
-                chunked_elements = chunk_by_title(
-                    elements,
-                    max_characters=max_characters,
-                    overlap=overlap,
-                )
-                logger.info(f"  分块为 {len(chunked_elements)} 个子块")
-            except Exception as e:
-                logger.warning(f"  chunk_by_title 分块失败: {e}，将整篇文档作为单个子块")
-                chunked_elements = elements
+            if not full_text:
+                logger.warning(f"  文档内容为空，跳过")
+                continue
+
+            # ---- RecursiveCharacterTextSplitter 按段落/句子边界分块 ----
+            text_splitter = RecursiveCharacterTextSplitter(
+                separators=["\n\n", "\n", "。", "；", "，", " ", ""],
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                length_function=len,
+            )
+
+            text_chunks = text_splitter.split_text(full_text)
+            logger.info(f"  分块为 {len(text_chunks)} 个子块")
 
             # ---- 将每个 chunk 转为 LangChain Document（子文档） ----
-            for i, chunk_elem in enumerate(chunked_elements):
-                chunk_text = str(chunk_elem).strip()
+            for i, chunk_text in enumerate(text_chunks):
+                chunk_text = chunk_text.strip()
                 if not chunk_text:
                     continue
 
