@@ -17,7 +17,7 @@ logging.basicConfig(
 
 
 def main():
-    data_path = "../../data/medical_rag"
+    data_path = "../../data/medical_rag/internal"
 
     # 1. 初始化 & 加载文档
     module = DataPreparationModule(data_path)

@@ -4,4 +4,17 @@ langchain-huggingface>=0.3.0
 langchain-community>=0.3.0
 faiss-cpu>=1.7.0
 unstructured[pdf]>=0.18.0
+pymupdf>=1.24.0
 python-dotenv>=1.0.0
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+# PyTorch 安装说明：
+# 请根据你的 CUDA 版本选择对应的安装命令（查看 CUDA 版本：nvidia-smi）：
+# CUDA 12.4（推荐，最新）:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# CUDA 12.1:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# CUDA 11.8:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# CPU 版本（默认，如果不需要 GPU 加速）:
+# torch>=2.0.0

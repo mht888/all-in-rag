@@ -1,1 +1,2 @@
 from .data_preparation import DataPreparationModule
+from .index_construction import IndexConstructionModule

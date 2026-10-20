@@ -3,11 +3,18 @@
 负责：PDF加载 → 元数据标记 → Unstructured分块 → 父子文档映射
 """
 
+import os
 import logging
 import hashlib
 import uuid
 from pathlib import Path
 from typing import List, Dict, Any
+
+# 禁用 Unstructured 的复杂 PDF 检测，强制使用 fast 策略
+os.environ["UNSTRUCTURED_IO_THRESHOLD"] = "0"
+
+# 设置 HuggingFace 镜像（解决国内访问问题）
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 from langchain_core.documents import Document
 
@@ -97,6 +104,29 @@ class DataPreparationModule:
         parent_folder = pdf_file.parent.name
         return self.CATEGORY_MAPPING.get(parent_folder, parent_folder)
 
+    def _extract_with_pymupdf(self, pdf_path: str) -> str:
+        """
+        使用 PyMuPDF 提取 PDF 文本（备用方案）
+
+        Args:
+            pdf_path: PDF 文件路径
+
+        Returns:
+            提取的文本内容
+        """
+        import fitz  # PyMuPDF
+
+        doc = fitz.open(pdf_path)
+        text_parts = []
+
+        for page in doc:
+            page_text = page.get_text("text")
+            if page_text:
+                text_parts.append(page_text.strip())
+
+        doc.close()
+        return "\n".join(text_parts)
+
     def _enhance_metadata(self, doc: Document):
         """
         增强元数据（预留扩展点）
@@ -112,11 +142,13 @@ class DataPreparationModule:
     def chunk_documents(self, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
         """
         使用 Unstructured (fast) 提取文字 + LangChain RecursiveCharacterTextSplitter 分块
+        如果 Unstructured 失败，自动回退到 pypdf
 
         流程：
           1. partition_pdf (fast) 提取 PDF 纯文字
-          2. RecursiveCharacterTextSplitter 按段落/句子边界分块
-          3. 每个子块建立与父文档的映射关系
+          2. 如果失败或内容为空，使用 pypdf 提取
+          3. RecursiveCharacterTextSplitter 按段落/句子边界分块
+          4. 每个子块建立与父文档的映射关系
 
         Args:
             chunk_size: 每个子块的最大字符数
@@ -143,6 +175,7 @@ class DataPreparationModule:
             logger.info(f"[{doc_idx + 1}/{len(self.documents)}] 正在解析: {doc_name}")
 
             # ---- Unstructured 提取文字（fast 策略，基于 pdfminer） ----
+            full_text = ""
             try:
                 elements = partition_pdf(
                     filename=pdf_path,
@@ -151,10 +184,19 @@ class DataPreparationModule:
                 )
                 # 拼接所有元素为完整文本
                 full_text = "\n".join(str(elem).strip() for elem in elements if str(elem).strip())
-                logger.info(f"  提取到 {len(full_text)} 个字符")
+                logger.info(f"  Unstructured 提取到 {len(full_text)} 个字符")
             except Exception as e:
-                logger.warning(f"  PDF 提取失败: {e}，跳过该文档")
-                continue
+                logger.warning(f"  Unstructured 提取失败: {e}")
+
+            # ---- 如果 Unstructured 失败或内容为空，使用 PyMuPDF 提取 ----
+            if not full_text or len(full_text) < 100:
+                logger.info(f"  尝试使用 PyMuPDF 提取...")
+                try:
+                    full_text = self._extract_with_pymupdf(pdf_path)
+                    logger.info(f"  PyMuPDF 提取到 {len(full_text)} 个字符")
+                except Exception as e:
+                    logger.warning(f"  PyMuPDF 提取也失败: {e}，跳过该文档")
+                    continue
 
             if not full_text:
                 logger.warning(f"  文档内容为空，跳过")
