@@ -8,6 +8,7 @@ pymupdf>=1.24.0
 python-dotenv>=1.0.0
 sentence-transformers>=2.2.0
 transformers>=4.30.0
+rank-bm25>=0.2.2
 # PyTorch 安装说明：
 # 请根据你的 CUDA 版本选择对应的安装命令（查看 CUDA 版本：nvidia-smi）：
 # CUDA 12.4（推荐，最新）:

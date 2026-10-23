@@ -1,2 +1,5 @@
 from .data_preparation import DataPreparationModule
 from .index_construction import IndexConstructionModule
+from .embedding_routing import EmbeddingRoutingModule
+from .colbert_rerank import ColbertRerankModule
+from .hybrid_search import HybridSearchModule

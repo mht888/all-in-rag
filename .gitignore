@@ -81,3 +81,5 @@ data/C3/search_result.png
 
 # Claude local settings
 .claude/
+
+data/medical_rag/
