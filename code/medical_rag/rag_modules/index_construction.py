@@ -46,13 +46,19 @@ class IndexConstructionModule:
         """初始化嵌入模型"""
         logger.info(f"正在初始化嵌入模型: {self.model_name}")
 
+        # 检查 CUDA 可用性
+        import torch
+        if self.device == "cuda" and not torch.cuda.is_available():
+            logger.warning("CUDA 不可用，自动切换到 CPU")
+            self.device = "cpu"
+
         self.embeddings = HuggingFaceEmbeddings(
             model_name=self.model_name,
             model_kwargs={"device": self.device},
             encode_kwargs={"normalize_embeddings": True},
         )
 
-        logger.info("嵌入模型初始化完成")
+        logger.info(f"嵌入模型初始化完成，使用设备: {self.device}")
 
     def build_vector_index(self, chunks: List[Document]) -> FAISS:
         """
@@ -77,18 +83,31 @@ class IndexConstructionModule:
         logger.info(f"向量索引构建完成，包含 {len(chunks)} 个向量")
         return self.vectorstore
 
-    def save_index(self):
-        """保存向量索引到磁盘"""
+    def save_index(self, category: str = None):
+        """
+        保存向量索引到磁盘
+
+        Args:
+            category: 学科分类，如果提供则保存到子目录
+        """
         if not self.vectorstore:
             raise ValueError("请先构建向量索引")
 
-        Path(self.index_save_path).mkdir(parents=True, exist_ok=True)
-        self.vectorstore.save_local(self.index_save_path)
-        logger.info(f"向量索引已保存到: {self.index_save_path}")
+        if category:
+            save_path = Path(self.index_save_path) / category
+        else:
+            save_path = Path(self.index_save_path)
 
-    def load_index(self):
+        save_path.mkdir(parents=True, exist_ok=True)
+        self.vectorstore.save_local(save_path)
+        logger.info(f"向量索引已保存到: {save_path}")
+
+    def load_index(self, category: str = None):
         """
         从磁盘加载向量索引
+
+        Args:
+            category: 学科分类，如果提供则从子目录加载
 
         Returns:
             加载的向量存储对象，加载失败返回 None
@@ -96,21 +115,55 @@ class IndexConstructionModule:
         if not self.embeddings:
             self.setup_embeddings()
 
-        if not Path(self.index_save_path).exists():
-            logger.info(f"索引路径不存在: {self.index_save_path}，将构建新索引")
+        if category:
+            load_path = Path(self.index_save_path) / category
+        else:
+            load_path = Path(self.index_save_path)
+
+        if not load_path.exists():
+            logger.info(f"索引路径不存在: {load_path}，将构建新索引")
             return None
 
         try:
             self.vectorstore = FAISS.load_local(
-                self.index_save_path,
+                load_path,
                 self.embeddings,
                 allow_dangerous_deserialization=True,
             )
-            logger.info(f"向量索引已从 {self.index_save_path} 加载")
+            logger.info(f"向量索引已从 {load_path} 加载")
             return self.vectorstore
         except Exception as e:
             logger.warning(f"加载向量索引失败: {e}，将构建新索引")
             return None
+
+    def index_exists(self, category: str = None) -> bool:
+        """
+        检查索引是否存在且有效（文件夹存在且包含索引文件）
+
+        Args:
+            category: 学科分类
+
+        Returns:
+            索引是否存在且有效
+        """
+        if category:
+            check_path = Path(self.index_save_path) / category
+        else:
+            check_path = Path(self.index_save_path)
+
+        # 检查文件夹是否存在
+        if not check_path.exists():
+            return False
+
+        # 检查文件夹是否为空
+        if not any(check_path.iterdir()):
+            return False
+
+        # 检查是否包含必要的索引文件
+        index_faiss = check_path / "index.faiss"
+        index_pkl = check_path / "index.pkl"
+
+        return index_faiss.exists() and index_pkl.exists()
 
     def similarity_search(self, query: str, k: int = 5) -> List[Document]:
         """

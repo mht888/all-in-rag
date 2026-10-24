@@ -23,6 +23,16 @@ from rag_modules import (
     HybridSearchModule,
     GenerationIntegrationModule
 )
+from rag_modules.colbert_rerank import ColbertRerankModule
+from rag_modules.embedding_routing import EmbeddingRoutingModule
+
+# 中文 category 到英文文件夹名的映射（避免 Windows 中文路径编码问题）
+CATEGORY_FOLDER_MAP = {
+    '内科学': 'internal',
+    '外科学': 'surgery',
+    '儿科学': 'pediatrics',
+    '药理学': 'pharmacology',
+}
 
 # 加载环境变量
 load_dotenv()
@@ -85,52 +95,111 @@ class MedicalRAGSystem:
         print("✅ 系统初始化完成！")
 
     def build_knowledge_base(self):
-        """构建知识库（索引已存在则直接加载，否则重新构建）"""
+        """构建知识库（按学科分类构建索引，已存在则跳过）"""
         print("\n正在构建知识库...")
 
-        # 1. 尝试加载已保存的索引
-        vectorstore = self.index_module.load_index()
+        # 1. 加载文档
+        print("加载医学文档...")
+        self.data_module.load_documents()
 
-        if vectorstore is not None:
-            print("✅ 成功加载已保存的向量索引！")
-            # 仍需加载文档和分块用于检索模块（BM25、父子文档映射）
-            print("加载医学文档...")
-            self.data_module.load_documents()
-            print("进行文本分块...")
-            chunks = self.data_module.chunk_documents(
+        # 2. 按学科分组文档
+        docs_by_category = {}
+        for doc in self.data_module.documents:
+            category = doc.metadata.get('category', '未知')
+            if category not in docs_by_category:
+                docs_by_category[category] = []
+            docs_by_category[category].append(doc)
+
+        print(f"发现 {len(docs_by_category)} 个学科: {list(docs_by_category.keys())}")
+
+        # 3. 按学科分别构建/加载索引
+        all_chunks = []
+        category_vectorstores = {}
+
+        for category, docs in docs_by_category.items():
+            # 使用英文文件夹名（避免 Windows 中文路径编码问题）
+            folder_name = CATEGORY_FOLDER_MAP.get(category, category)
+            print(f"\n处理学科: {category} (文件夹: {folder_name})")
+
+            # 检查该学科的索引是否已存在
+            if self.index_module.index_exists(folder_name):
+                print(f"  ✅ 索引已存在，跳过构建")
+                vectorstore = self.index_module.load_index(folder_name)
+                category_vectorstores[category] = vectorstore
+            else:
+                print(f"  📝 索引不存在，开始构建...")
+
+                # 为该学科的文档创建临时模块进行分块
+                from rag_modules.data_preparation import DataPreparationModule
+                temp_module = DataPreparationModule(self.config.data_path)
+                temp_module.documents = docs
+
+                # 分块
+                chunks = temp_module.chunk_documents(
+                    chunk_size=self.config.chunk_size,
+                    chunk_overlap=self.config.chunk_overlap
+                )
+                all_chunks.extend(chunks)
+
+                # 构建索引
+                vectorstore = self.index_module.build_vector_index(chunks)
+                category_vectorstores[category] = vectorstore
+
+                # 保存索引（使用英文文件夹名）
+                self.index_module.save_index(folder_name)
+                print(f"  ✅ 索引已保存到: {self.config.index_save_path}/{folder_name}")
+
+        # 4. 合并所有 chunks（用于检索模块）
+        if not all_chunks:
+            # 如果所有索引都已存在，仍需加载文档和分块用于检索模块
+            print("\n加载文档分块用于检索模块...")
+            all_chunks = self.data_module.chunk_documents(
                 chunk_size=self.config.chunk_size,
                 chunk_overlap=self.config.chunk_overlap
+            )
+
+        # 5. 合并所有 vectorstores（用于检索模块）
+        # 使用第一个 vectorstore 作为基础，合并其他
+        if category_vectorstores:
+            first_category = list(category_vectorstores.keys())[0]
+            merged_vectorstore = category_vectorstores[first_category]
+
+            # 如果有多个学科，需要合并索引
+            if len(category_vectorstores) > 1:
+                print("\n合并各学科索引...")
+                for category, vs in list(category_vectorstores.items())[1:]:
+                    merged_vectorstore.merge_from(vs)
+                print("✅ 索引合并完成")
+        else:
+            raise ValueError("没有可用的向量索引")
+
+        # 6. 根据策略初始化检索模块
+        strategy = self.config.retrieval_strategy
+        print(f"\n初始化检索模块 (策略: {strategy})...")
+
+        if strategy == "hybrid":
+            self.retrieval_module = HybridSearchModule(
+                merged_vectorstore,
+                all_chunks,
+                top_k=self.config.top_k,
+                rrf_k=self.config.rrf_k
+            )
+        elif strategy == "colbert":
+            self.retrieval_module = ColbertRerankModule(
+                merged_vectorstore,
+                model_name=self.config.reranker_model,
+                initial_top_k=self.config.colbert_initial_top_k,
+                final_top_k=self.config.top_k
+            )
+        elif strategy == "embedding_route":
+            self.retrieval_module = EmbeddingRoutingModule(
+                merged_vectorstore,
+                all_chunks,
+                embedding_model=self.config.embedding_model,
+                top_k=self.config.top_k
             )
         else:
-            print("未找到已保存的索引，开始构建新索引...")
-
-            # 2. 加载文档
-            print("加载医学文档...")
-            self.data_module.load_documents()
-
-            # 3. 文本分块
-            print("进行文本分块...")
-            chunks = self.data_module.chunk_documents(
-                chunk_size=self.config.chunk_size,
-                chunk_overlap=self.config.chunk_overlap
-            )
-
-            # 4. 构建向量索引
-            print("构建向量索引...")
-            vectorstore = self.index_module.build_vector_index(chunks)
-
-            # 5. 保存索引
-            print("保存向量索引...")
-            self.index_module.save_index()
-
-        # 6. 初始化混合检索模块
-        print("初始化混合检索...")
-        self.retrieval_module = HybridSearchModule(
-            vectorstore,
-            chunks,
-            top_k=self.config.top_k,
-            rrf_k=self.config.rrf_k
-        )
+            raise ValueError(f"未知的检索策略: {strategy}")
 
         # 7. 显示统计信息
         stats = self.data_module.get_statistics()
@@ -193,16 +262,25 @@ class MedicalRAGSystem:
             if search_query != question:
                 print(f"📝 查询已重写: '{search_query}'")
 
-        # 3. 检索相关子块（学科关键词命中时使用元数据过滤检索）
+        # 3. 检索相关子块（根据策略和过滤条件选择检索方式）
         print("🔍 检索相关文档...")
-        filters = self._extract_filters_from_query(question)
-        if filters:
-            print(f"   应用学科过滤: {filters}")
-            relevant_chunks = self.index_module.metadata_filtered_search(
-                search_query, filters, k=self.config.top_k
-            )
+        strategy = self.config.retrieval_strategy
+
+        if strategy == "embedding_route":
+            # 嵌入路由策略：自带学科路由，忽略外部过滤
+            relevant_chunks = self.retrieval_module.search(search_query)
         else:
-            relevant_chunks = self.retrieval_module.hybrid_search(search_query)
+            # hybrid / colbert 策略：检查是否需要学科过滤
+            filters = self._extract_filters_from_query(question)
+            if filters:
+                print(f"   应用学科过滤: {filters}")
+                relevant_chunks = self.retrieval_module.filtered_search(search_query, filters)
+            else:
+                # 根据策略调用对应的检索方法
+                if strategy == "hybrid":
+                    relevant_chunks = self.retrieval_module.hybrid_search(search_query)
+                elif strategy == "colbert":
+                    relevant_chunks, _ = self.retrieval_module.retrieve_and_rerank(search_query)
 
         # 显示检索到的子块信息
         if relevant_chunks:
@@ -212,6 +290,10 @@ class MedicalRAGSystem:
                 category = chunk.metadata.get('category', '')
                 chunk_info.append(f"{doc_name}[{category}]" if category else doc_name)
             print(f"找到 {len(relevant_chunks)} 个相关文档块: {', '.join(chunk_info)}")
+            # 显示每个文档块的内容预览
+            for i, chunk in enumerate(relevant_chunks, 1):
+                content_preview = chunk.page_content[:100].replace('\n', ' ')
+                print(f"   文档块{i}: {content_preview}...")
         else:
             print("找到 0 个相关文档块")
 

@@ -1,21 +1,39 @@
+# LangChain 核心依赖
 langchain-core>=0.3.0
 langchain-text-splitters>=0.3.0
 langchain-huggingface>=0.3.0
 langchain-community>=0.3.0
+langchain-openai>=0.2.0
+
+# 向量检索
 faiss-cpu>=1.7.0
+
+# 文档处理
 unstructured[pdf]>=0.18.0
 pymupdf>=1.24.0
+
+# 工具库
 python-dotenv>=1.0.0
+numpy>=1.24.0
+
+# 嵌入模型
 sentence-transformers>=2.2.0
 transformers>=4.30.0
+
+# BM25 检索
 rank-bm25>=0.2.2
 # PyTorch 安装说明：
 # 请根据你的 CUDA 版本选择对应的安装命令（查看 CUDA 版本：nvidia-smi）：
+# 注意：不要安装 torchaudio，项目不需要且可能导致加载错误
+#
 # CUDA 12.4（推荐，最新）:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#
 # CUDA 12.1:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#
 # CUDA 11.8:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+#
 # CPU 版本（默认，如果不需要 GPU 加速）:
-# torch>=2.0.0
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

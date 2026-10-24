@@ -4,17 +4,16 @@ ColBERT 重排模块
 """
 
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from langchain_core.documents import Document
-from langchain.retrievers.document_compressors.base import BaseDocumentCompressor
 
 logger = logging.getLogger(__name__)
 
 
-class ColBERTReranker(BaseDocumentCompressor):
+class ColBERTReranker:
     """ColBERT 重排器 - 使用 bge-reranker-v2-m3"""
 
     def __init__(self, model_name: str = "BAAI/bge-reranker-v2-m3"):
@@ -175,3 +174,49 @@ class ColbertRerankModule:
         logger.info(f"重排后返回 top-{len(final_docs)} 文档")
 
         return final_docs, scores
+
+    def filtered_search(self, query: str, filters: Dict[str, Any]) -> List[Document]:
+        """
+        带元数据过滤的检索
+
+        Args:
+            query: 查询文本
+            filters: 元数据过滤条件，如 {'category': '内科学'}
+
+        Returns:
+            过滤后的文档列表
+        """
+        logger.info(f"开始带过滤的检索: '{query[:30]}...', 过滤条件: {filters}")
+
+        # 1. 先检索更多候选（2 倍 initial_top_k）
+        original_initial_top_k = self.initial_top_k
+        self.initial_top_k = self.initial_top_k * 2
+        candidates, _ = self.retrieve_and_rerank(query)
+        self.initial_top_k = original_initial_top_k
+
+        # 2. 应用元数据过滤
+        filtered_docs = []
+        for doc in candidates:
+            if self._match_filters(doc, filters):
+                filtered_docs.append(doc)
+                if len(filtered_docs) >= self.final_top_k:
+                    break
+
+        logger.info(f"过滤后返回 {len(filtered_docs)} 个文档")
+        return filtered_docs
+
+    def _match_filters(self, doc: Document, filters: Dict[str, Any]) -> bool:
+        """
+        检查文档是否匹配所有过滤条件
+
+        Args:
+            doc: 文档对象
+            filters: 过滤条件
+
+        Returns:
+            是否匹配
+        """
+        for key, value in filters.items():
+            if doc.metadata.get(key) != value:
+                return False
+        return True

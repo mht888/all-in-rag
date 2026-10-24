@@ -89,6 +89,52 @@ class HybridSearchModule:
 
         return final_docs
 
+    def filtered_search(self, query: str, filters: Dict[str, Any]) -> List[Document]:
+        """
+        带元数据过滤的混合检索
+
+        Args:
+            query: 查询文本
+            filters: 元数据过滤条件，如 {'category': '内科学'}
+
+        Returns:
+            过滤后的文档列表
+        """
+        logger.info(f"开始带过滤的混合检索: '{query[:30]}...', 过滤条件: {filters}")
+
+        # 1. 先混合检索 3 倍候选
+        original_top_k = self.top_k
+        self.top_k = self.top_k * 3
+        candidates = self.hybrid_search(query)
+        self.top_k = original_top_k
+
+        # 2. 应用元数据过滤
+        filtered_docs = []
+        for doc in candidates:
+            if self._match_filters(doc, filters):
+                filtered_docs.append(doc)
+                if len(filtered_docs) >= self.top_k:
+                    break
+
+        logger.info(f"过滤后返回 {len(filtered_docs)} 个文档")
+        return filtered_docs
+
+    def _match_filters(self, doc: Document, filters: Dict[str, Any]) -> bool:
+        """
+        检查文档是否匹配所有过滤条件
+
+        Args:
+            doc: 文档对象
+            filters: 过滤条件
+
+        Returns:
+            是否匹配
+        """
+        for key, value in filters.items():
+            if doc.metadata.get(key) != value:
+                return False
+        return True
+
     def _rrf_rerank(
         self,
         vector_docs: List[Document],
