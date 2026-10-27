@@ -43,7 +43,7 @@ def main():
     index_module = IndexConstructionModule(
         model_name="BAAI/bge-m3",
         index_save_path=index_save_path,
-        device="cpu",  # 有 GPU 改为 "cuda"
+        device="cuda",  # 无 GPU 改为 "cpu"
     )
 
     index_module.build_vector_index(chunks)

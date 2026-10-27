@@ -26,14 +26,6 @@ from rag_modules import (
 from rag_modules.colbert_rerank import ColbertRerankModule
 from rag_modules.embedding_routing import EmbeddingRoutingModule
 
-# 中文 category 到英文文件夹名的映射（避免 Windows 中文路径编码问题）
-CATEGORY_FOLDER_MAP = {
-    '内科学': 'internal',
-    '外科学': 'surgery',
-    '儿科学': 'pediatrics',
-    '药理学': 'pharmacology',
-}
-
 # 加载环境变量
 load_dotenv()
 
@@ -59,6 +51,7 @@ class MedicalRAGSystem:
         self.index_module = None
         self.retrieval_module = None
         self.generation_module = None
+        self.merged_vectorstore = None
 
         # 检查数据路径
         if not Path(self.config.data_path).exists():
@@ -89,45 +82,45 @@ class MedicalRAGSystem:
         self.generation_module = GenerationIntegrationModule(
             model_name=self.config.llm_model,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens
+            max_tokens=self.config.max_tokens,
+            context_max_length=self.config.context_max_length
         )
 
         print("✅ 系统初始化完成！")
 
     def build_knowledge_base(self):
-        """构建知识库（按学科分类构建索引，已存在则跳过）"""
+        """构建知识库（按文件夹分类构建索引，已存在且有效则跳过）"""
         print("\n正在构建知识库...")
 
         # 1. 加载文档
         print("加载医学文档...")
         self.data_module.load_documents()
 
-        # 2. 按学科分组文档
-        docs_by_category = {}
+        # 2. 按文件夹分组文档（直接用英文文件夹名）
+        docs_by_folder = {}
         for doc in self.data_module.documents:
-            category = doc.metadata.get('category', '未知')
-            if category not in docs_by_category:
-                docs_by_category[category] = []
-            docs_by_category[category].append(doc)
+            folder_name = doc.metadata.get('folder_name', 'unknown')
+            if folder_name not in docs_by_folder:
+                docs_by_folder[folder_name] = []
+            docs_by_folder[folder_name].append(doc)
 
-        print(f"发现 {len(docs_by_category)} 个学科: {list(docs_by_category.keys())}")
+        print(f"发现 {len(docs_by_folder)} 个学科文件夹: {list(docs_by_folder.keys())}")
 
-        # 3. 按学科分别构建/加载索引
+        # 3. 按文件夹分别构建/加载索引
         all_chunks = []
-        category_vectorstores = {}
+        folder_vectorstores = {}
 
-        for category, docs in docs_by_category.items():
-            # 使用英文文件夹名（避免 Windows 中文路径编码问题）
-            folder_name = CATEGORY_FOLDER_MAP.get(category, category)
+        for folder_name, docs in docs_by_folder.items():
+            category = docs[0].metadata.get('category', '未知') if docs else '未知'
             print(f"\n处理学科: {category} (文件夹: {folder_name})")
 
-            # 检查该学科的索引是否已存在
+            # 检查该学科的索引是否已存在且有效（文件夹存在、不为空、有 faiss+pkl）
             if self.index_module.index_exists(folder_name):
-                print(f"  ✅ 索引已存在，跳过构建")
+                print(f"  ✅ 索引已存在且有效，跳过构建")
                 vectorstore = self.index_module.load_index(folder_name)
-                category_vectorstores[category] = vectorstore
+                folder_vectorstores[folder_name] = vectorstore
             else:
-                print(f"  📝 索引不存在，开始构建...")
+                print(f"  📝 索引不存在或无效，开始构建...")
 
                 # 为该学科的文档创建临时模块进行分块
                 from rag_modules.data_preparation import DataPreparationModule
@@ -143,9 +136,9 @@ class MedicalRAGSystem:
 
                 # 构建索引
                 vectorstore = self.index_module.build_vector_index(chunks)
-                category_vectorstores[category] = vectorstore
+                folder_vectorstores[folder_name] = vectorstore
 
-                # 保存索引（使用英文文件夹名）
+                # 保存索引（直接用文件夹名）
                 self.index_module.save_index(folder_name)
                 print(f"  ✅ 索引已保存到: {self.config.index_save_path}/{folder_name}")
 
@@ -158,20 +151,23 @@ class MedicalRAGSystem:
                 chunk_overlap=self.config.chunk_overlap
             )
 
-        # 5. 合并所有 vectorstores（用于检索模块）
+        # 4. 合并所有 vectorstores（用于检索模块）
         # 使用第一个 vectorstore 作为基础，合并其他
-        if category_vectorstores:
-            first_category = list(category_vectorstores.keys())[0]
-            merged_vectorstore = category_vectorstores[first_category]
+        if folder_vectorstores:
+            first_folder = list(folder_vectorstores.keys())[0]
+            merged_vectorstore = folder_vectorstores[first_folder]
 
             # 如果有多个学科，需要合并索引
-            if len(category_vectorstores) > 1:
+            if len(folder_vectorstores) > 1:
                 print("\n合并各学科索引...")
-                for category, vs in list(category_vectorstores.items())[1:]:
+                for folder, vs in list(folder_vectorstores.items())[1:]:
                     merged_vectorstore.merge_from(vs)
                 print("✅ 索引合并完成")
         else:
             raise ValueError("没有可用的向量索引")
+
+        # 保存合并后的向量存储，供查询时还原父子上下文窗口（docstore 含全部子块）
+        self.merged_vectorstore = merged_vectorstore
 
         # 6. 根据策略初始化检索模块
         strategy = self.config.retrieval_strategy
@@ -196,7 +192,8 @@ class MedicalRAGSystem:
                 merged_vectorstore,
                 all_chunks,
                 embedding_model=self.config.embedding_model,
-                top_k=self.config.top_k
+                top_k=self.config.top_k,
+                device=self.config.device
             )
         else:
             raise ValueError(f"未知的检索策略: {strategy}")
@@ -306,13 +303,24 @@ class MedicalRAGSystem:
                 )
             return "抱歉，没有找到相关的医学资料。请尝试更换关键词，或咨询专业医生。"
 
-        # 5. 父子文档映射（子块 → 完整文档）
-        print("获取完整文档...")
-        relevant_docs = self.data_module.get_parent_documents(relevant_chunks)
+        # 5. 父子文档映射（子块 → 前后窗口拼接的父上下文）
+        #    旧版 get_parent_documents 返回的父文档 page_content 为空，
+        #    导致 LLM 收到空上下文；改为按窗口扩展，content 真实非空。
+        print("扩展父上下文窗口...")
+        relevant_docs = self.data_module.expand_to_parent_windows(
+            relevant_chunks,
+            self.merged_vectorstore,
+            window_size=self.config.parent_window_size,
+        )
 
-        doc_names = [doc.metadata.get('doc_name', '未知文档') for doc in relevant_docs]
-        if doc_names:
-            print(f"找到文档: {', '.join(doc_names)}")
+        if relevant_docs:
+            win_info = [
+                f"{d.metadata.get('doc_name', '未知')}[窗口{d.metadata.get('window', '')},{len(d.page_content)}字]"
+                for d in relevant_docs
+            ]
+            print(f"生成 {len(relevant_docs)} 个父上下文: {', '.join(win_info)}")
+        else:
+            print("父上下文为空")
 
         # 6. 按路由类型生成回答
         print("✍️ 生成回答...")

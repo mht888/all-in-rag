@@ -177,7 +177,7 @@ class GenerationIntegrationModule:
 回答:""",
     }
 
-    def __init__(self, model_name: str = "qwen3.7-plus", temperature: float = 0.1, max_tokens: int = 2048):
+    def __init__(self, model_name: str = "qwen3.7-plus", temperature: float = 0.1, max_tokens: int = 2048, context_max_length: int = 6000):
         """
         初始化生成集成模块
 
@@ -185,10 +185,12 @@ class GenerationIntegrationModule:
             model_name: 模型名称
             temperature: 生成温度
             max_tokens: 最大token数
+            context_max_length: 送入 LLM 的上下文最大字符数
         """
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.context_max_length = context_max_length
         self.llm = None
         self.setup_llm()
 
@@ -198,14 +200,18 @@ class GenerationIntegrationModule:
 
         api_key = os.getenv("QWEN_API_KEY")
         if not api_key:
-            raise ValueError("请设置 QWEN_API_KEY 环境变量")
+            raise ValueError("请设置 API_KEY 环境变量")
 
+        api_base = os.getenv("QWEN_API_BASE")
+        if not api_base:
+            raise ValueError("请设置 API_BASE 环境变量")
+        
         self.llm = ChatOpenAI(
-            model="qwen3.7-plus",  # 或 "qwen-turbo", "qwen-max" 等
+            model=self.model_name,  # 或 "qwen-turbo", "qwen-max" 等
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             openai_api_key=api_key,
-            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            openai_api_base=api_base,
             timeout=120,
             max_retries=2
         )
@@ -519,7 +525,7 @@ class GenerationIntegrationModule:
         prefix: str = "",
     ) -> str:
         """非流式生成回答"""
-        context = self._build_context(context_docs)
+        context = self._build_context(context_docs, self.context_max_length)
         chain = self._build_chain(template_key, context, expertise)
 
         response = chain.invoke(query)
@@ -539,7 +545,7 @@ class GenerationIntegrationModule:
         使用invoke获取完整回答后逐段输出，模拟流式效果
         （避免stream()的SSE流卡死问题，与C8保持一致）
         """
-        context = self._build_context(context_docs)
+        context = self._build_context(context_docs, self.context_max_length)
         chain = self._build_chain(template_key, context, expertise)
 
         try:

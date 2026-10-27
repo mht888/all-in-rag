@@ -21,14 +21,6 @@ from rag_modules import DataPreparationModule, IndexConstructionModule
 # 加载环境变量
 load_dotenv()
 
-# 中文 category 到英文文件夹名的映射（避免 Windows 中文路径编码问题）
-CATEGORY_FOLDER_MAP = {
-    '内科学': 'internal',
-    '外科学': 'surgery',
-    '儿科学': 'pediatrics',
-    '药理学': 'pharmacology',
-}
-
 def build_index():
     """按学科分类构建索引"""
     print("=" * 60)
@@ -54,36 +46,36 @@ def build_index():
         print("❌ 未找到任何PDF文档")
         return
     
-    # 3. 按学科分组
-    docs_by_category = {}
+    # 3. 按文件夹分组（直接用英文文件夹名）
+    docs_by_folder = {}
     for doc in documents:
-        category = doc.metadata.get('category', '未知')
-        if category not in docs_by_category:
-            docs_by_category[category] = []
-        docs_by_category[category].append(doc)
+        folder_name = doc.metadata.get('folder_name', 'unknown')
+        if folder_name not in docs_by_folder:
+            docs_by_folder[folder_name] = []
+        docs_by_folder[folder_name].append(doc)
     
-    print(f"\n📊 发现 {len(docs_by_category)} 个学科:")
-    for category, docs in docs_by_category.items():
-        print(f"   - {category}: {len(docs)} 个文档")
+    print(f"\n📊 发现 {len(docs_by_folder)} 个学科文件夹:")
+    for folder_name, docs in docs_by_folder.items():
+        category = docs[0].metadata.get('category', '未知') if docs else '未知'
+        print(f"   - {folder_name} ({category}): {len(docs)} 个文档")
     
-    # 4. 按学科构建索引
+    # 4. 按文件夹构建索引
     print("\n🔨 开始构建索引...")
     
-    for category, docs in docs_by_category.items():
-        # 使用英文文件夹名（避免 Windows 中文路径编码问题）
-        folder_name = CATEGORY_FOLDER_MAP.get(category, category)
+    for folder_name, docs in docs_by_folder.items():
+        category = docs[0].metadata.get('category', '未知') if docs else '未知'
         
         print(f"\n{'='*40}")
         print(f"处理学科: {category} (文件夹: {folder_name})")
         print(f"{'='*40}")
         
-        # 检查索引是否已存在
+        # 检查索引是否已存在（检查文件夹存在、不为空、且有 faiss+pkl 文件）
         if index_module.index_exists(folder_name):
-            print(f"✅ 索引已存在，跳过构建")
+            print(f"✅ 索引已存在且有效，跳过构建")
             print(f"   路径: {config.index_save_path}/{folder_name}")
             continue
         
-        print(f"📝 索引不存在，开始构建...")
+        print(f"📝 索引不存在或无效，开始构建...")
         
         # 为该学科的文档创建临时模块进行分块
         temp_module = DataPreparationModule(config.data_path)
@@ -101,7 +93,7 @@ def build_index():
         print(f"  正在构建向量索引...")
         vectorstore = index_module.build_vector_index(chunks)
         
-        # 保存索引（使用英文文件夹名）
+        # 保存索引（直接用文件夹名）
         print(f"  正在保存索引...")
         index_module.save_index(folder_name)
         print(f"  ✅ 索引已保存到: {config.index_save_path}/{folder_name}")

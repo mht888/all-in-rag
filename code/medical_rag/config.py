@@ -15,8 +15,8 @@ class RAGConfig:
 
     # 模型配置
     embedding_model: str = "BAAI/bge-m3"
-    llm_model: str = "qwen3.7-plus"
-    device: str = "cpu"  # 嵌入模型运行设备: 'cpu' 或 'cuda'
+    llm_model: str = "glm-5.3"
+    device: str = "cuda"  # 嵌入模型运行设备: 'cuda' 或 'cpu'（CUDA 不可用时自动回退 cpu）
 
     # 分块配置
     chunk_size: int = 1000
@@ -31,6 +31,13 @@ class RAGConfig:
     # 检索配置
     top_k: int = 3
     rrf_k: int = 60
+
+    # 父子文档（上下文窗口）配置
+    # 检索命中子块后，向前后各扩展 parent_window_size 个子块拼成"父上下文"喂给 LLM
+    # （small-to-big / 句子窗口检索）。设为 0 则退化为只用命中的子块本身。
+    parent_window_size: int = 5
+    # 送入 LLM 的上下文最大字符数（窗口拼接后可能较长，需配合调大）
+    context_max_length: int = 24000
 
     # ColBERT 重排策略参数（retrieval_strategy="colbert" 时生效）
     reranker_model: str = "BAAI/bge-reranker-v2-m3"

@@ -44,6 +44,7 @@ class EmbeddingRoutingModule:
         chunks: List[Document],
         embedding_model: str = "BAAI/bge-m3",
         top_k: int = 3,
+        device: str = "cpu",
     ):
         """
         初始化嵌入路由模块
@@ -53,16 +54,23 @@ class EmbeddingRoutingModule:
             chunks: 文档块列表
             embedding_model: 嵌入模型名称
             top_k: 检索返回的文档数
+            device: 嵌入模型运行设备，'cpu' 或 'cuda'
         """
         self.vectorstore = vectorstore
         self.chunks = chunks
         self.top_k = top_k
 
         # 初始化嵌入模型
-        logger.info(f"初始化嵌入模型: {embedding_model}")
+        logger.info(f"初始化嵌入模型: {embedding_model} (设备: {device})")
+
+        import torch
+        if device == "cuda" and not torch.cuda.is_available():
+            logger.warning("CUDA 不可用，自动切换到 CPU")
+            device = "cpu"
+
         self.embeddings = HuggingFaceEmbeddings(
             model_name=embedding_model,
-            model_kwargs={"device": "cpu"},
+            model_kwargs={"device": device},
             encode_kwargs={"normalize_embeddings": True},
         )
 

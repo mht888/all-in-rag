@@ -68,7 +68,8 @@ class DataPreparationModule:
                     relative_path = pdf_file.as_posix()
 
                 # 从父文件夹名提取学科分类
-                category = self._extract_category(pdf_file)
+                folder_name = pdf_file.parent.name  # 英文文件夹名
+                category = self._extract_category(pdf_file)  # 中文分类名
 
                 # 文档名称 = 文件名（不含扩展名）
                 doc_name = pdf_file.stem
@@ -83,6 +84,7 @@ class DataPreparationModule:
                         "parent_id": parent_id,
                         "doc_type": "parent",
                         "category": category,
+                        "folder_name": folder_name,  # 英文文件夹名，用于索引目录
                         "doc_name": doc_name,
                         "file_path": relative_path,
                     },
@@ -231,6 +233,7 @@ class DataPreparationModule:
                         "chunk_size": len(chunk_text),
                         # 继承父文档元数据
                         "category": parent_doc.metadata["category"],
+                        "folder_name": parent_doc.metadata["folder_name"],
                         "doc_name": doc_name,
                         "source": pdf_path,
                     },
@@ -276,6 +279,131 @@ class DataPreparationModule:
         # 按命中次数降序排列
         sorted_ids = sorted(parent_relevance, key=parent_relevance.get, reverse=True)
         return [parent_docs_map[pid] for pid in sorted_ids if pid in parent_docs_map]
+
+    def expand_to_parent_windows(
+        self,
+        child_chunks: List[Document],
+        vectorstore,
+        window_size: int = 5,
+    ) -> List[Document]:
+        """
+        父子文档映射（上下文窗口版）—— 把检索命中的子块扩展为"父上下文"
+
+        与 get_parent_documents 的区别：
+          - 旧版父文档 = 整本 PDF，page_content 为空（load_documents 写死 ""，
+            chunk_documents 也从不回填），导致送入 LLM 的上下文为空。
+          - 本版父上下文 = 命中子块前后各 window_size 个相邻子块拼接而成，
+            内容真实、相关性高（small-to-big / 句子窗口检索）。
+
+        窗口数据直接来自已加载的 FAISS 索引 docstore（其中保留了每个子块的
+        chunk_index / parent_id / 正文），因此无需重建索引。
+
+        重叠去重：同一文档内，若多个命中子块的窗口相互重叠或相邻，合并为一个
+        区间，避免把重复内容多次送给 LLM。
+
+        Args:
+            child_chunks: 检索命中的子块（按相关性排序）
+            vectorstore: 已加载/合并的 FAISS 向量存储（用于取 docstore 还原窗口）
+            window_size: 前后各扩展的子块数；0 表示只用命中子块本身
+
+        Returns:
+            父上下文 Document 列表，按命中子块的相关性顺序排列，page_content 非空
+        """
+        if not child_chunks:
+            return []
+
+        # 1. 从 docstore 还原 {parent_id: {chunk_index: Document}}
+        parent_chunks: Dict[str, Dict[int, Document]] = {}
+        try:
+            doc_ids = list(vectorstore.index_to_docstore_id.values())
+        except AttributeError:
+            doc_ids = []
+        for did in doc_ids:
+            try:
+                d = vectorstore.docstore.search(did)
+            except Exception:
+                continue
+            pid = d.metadata.get("parent_id")
+            ci = d.metadata.get("chunk_index")
+            if pid is None or ci is None:
+                continue
+            parent_chunks.setdefault(pid, {})[ci] = d
+
+        # 2. 为每个命中子块计算窗口区间，按 parent_id 归组
+        #    wins: pid -> list of (start, end, rank, meta)
+        wins_by_parent: Dict[str, list] = {}
+        for rank, ch in enumerate(child_chunks):
+            pid = ch.metadata.get("parent_id")
+            ci = ch.metadata.get("chunk_index")
+            meta = ch.metadata
+            if pid is None or ci is None:
+                # 缺少定位信息，退化为只用子块自身
+                wins_by_parent.setdefault("__self__", []).append(
+                    (rank, rank, rank, meta, ch.page_content)
+                )
+                continue
+            if window_size <= 0:
+                start = end = ci
+            else:
+                start = max(0, ci - window_size)
+                end = ci + window_size
+            wins_by_parent.setdefault(pid, []).append((start, end, rank, meta, None))
+
+        # 3. 合并重叠/相邻区间，拼接窗口正文
+        result: List[Document] = []
+        for pid, wins in wins_by_parent.items():
+            if pid == "__self__":
+                # 无 parent_id 的退化情况：直接用子块自身正文
+                for start, end, rank, meta, text in wins:
+                    result.append(self._make_window_doc(meta, rank, text or "", f"self"))
+                continue
+
+            chunks_map = parent_chunks.get(pid, {})
+            # 按区间起点排序后合并
+            wins.sort(key=lambda x: (x[0], x[2]))
+            merged: list = []  # (start, end, best_rank, meta)
+            for start, end, rank, meta, _ in wins:
+                if merged and start <= merged[-1][1] + 1:
+                    # 与上一区间重叠或相邻 → 合并
+                    merged[-1] = (
+                        merged[-1][0],
+                        max(merged[-1][1], end),
+                        min(merged[-1][2], rank),
+                        merged[-1][3],
+                    )
+                else:
+                    merged.append((start, end, rank, meta))
+
+            for start, end, rank, meta in merged:
+                texts = []
+                for ci in range(start, end + 1):
+                    d = chunks_map.get(ci)
+                    if d is not None and d.page_content:
+                        texts.append(d.page_content)
+                window_text = "\n".join(texts).strip()
+                if not window_text:
+                    continue
+                result.append(
+                    self._make_window_doc(meta, rank, window_text, f"{start}-{end}")
+                )
+
+        # 4. 按命中子块的相关性顺序排列
+        result.sort(key=lambda doc: doc.metadata.get("_rank", 10**6))
+        return result
+
+    @staticmethod
+    def _make_window_doc(meta: Dict[str, Any], rank: int, text: str, window: str) -> Document:
+        """构造父上下文 Document（保留展示用元数据 + 内部排序用 _rank）"""
+        return Document(
+            page_content=text,
+            metadata={
+                "doc_name": meta.get("doc_name", ""),
+                "category": meta.get("category", ""),
+                "parent_id": meta.get("parent_id", ""),
+                "window": window,
+                "_rank": rank,
+            },
+        )
 
     def get_statistics(self) -> Dict[str, Any]:
         """获取数据统计信息"""

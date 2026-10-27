@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-10-27 01:39:27",
+  "chunk_config": {
+    "chunk_size": 1000,
+    "chunk_overlap": 200
+  },
+  "questions": [
+    {
+      "question": "中毒时血液透析适用于清除血液中具有哪些特性的毒物？哪些毒物因具有脂溶性一般不进行血液透析？",
+      "reference": "血液透析适用于清除分子量较小和非脂溶性的毒物，如苯巴比妥、水杨酸类、甲醇、茶碱、乙二醇和锂等；短效巴比妥类、格鲁米特和OPI因有脂溶性，一般不进行血液透析。",
+      "cross_subject": true,
+      "source_doc": "内科学(第10版)",
+      "category": "内科学",
+      "source_chunk_hash": "e77738c8583afac9436300a4c82210a4",
+      "chunk_preview": "化物、无机磷或士的宁 对硫磷（1605）等硫代类OPI 中毒禁用 2% 碳酸氢钠 OPI、氨基甲酸酯类、拟除虫菊酯类、苯、铊、 汞、硫、铬、硫酸亚铁或磷 敌百虫"
+    },
+    {
+      "question": "溃疡性结肠炎归属于哪一类疾病？",
+      "reference": "溃疡性结肠炎归属于炎症性肠病，在教材中为第八章“炎症性肠病”的第一节内容。",
+      "cross_subject": true,
+      "source_doc": "内科学(第10版)",
+      "category": "内科学",
+      "source_chunk_hash": "07648a91446755ff31ad748340603394",
+      "chunk_preview": "第三节　特殊类型的胃炎或胃病 .. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "
+    },
+    {
+      "question": "萎缩性鼻炎的组织病理学特征和主要临床特征是什么？",
+      "reference": "萎缩性鼻炎是以鼻黏膜萎缩或退行性变为组织病理学特征的一类特殊的鼻炎，其特征为鼻黏膜萎缩、嗅觉减退或消失和鼻腔大量结痂形成，严重者鼻甲骨膜和骨质亦发生萎缩。",
+      "cross_subject": false,
+      "source_doc": "29. 耳鼻咽喉头颈外科学（第10版）",
+      "category": "otorhinolaryngology",
+      "source_chunk_hash": "9e07647176599b796382e291dec9f7d2",
+      "chunk_preview": "性介导的组胺释放。 【临床表现】 男女均可发病，一般多发于中青年女性，环境因素如温度、气压、刺激性气体等均可激发鼻部症 状。鼻塞、流涕、喷嚏、鼻痒等较为多见；但"
+    },
+    {
+      "question": "毒性休克综合征毒素-1的英文全称及英文缩写是什么？",
+      "reference": "毒性休克综合征毒素-1的英文全称为toxic shock syndrome toxin-1，英文缩写为TSST-1。",
+      "cross_subject": true,
+      "source_doc": "29. 耳鼻咽喉头颈外科学（第10版）",
+      "category": "otorhinolaryngology",
+      "source_chunk_hash": "2f2a27d7fc2b97a7c5fe89ad89f81935",
+      "chunk_preview": "407 毒性休克综合征毒素 -1　toxic shock syndrome toxin-1， TSST-1　205 对耳屏　antitragus　19 多次小睡"
+    },
+    {
+      "question": "婴儿擦浴适用于几个月以后的婴儿？水温应如何控制？",
+      "reference": "擦浴适用于7～8个月以后的婴儿，水温32～33℃，待婴儿适应后可逐渐降至26℃；擦浴时先用毛巾浸入温水拧至半干，在婴儿四肢做向心性擦浴，擦毕再用干毛巾擦至皮肤微红。",
+      "cross_subject": false,
+      "source_doc": "儿科学",
+      "category": "儿科学",
+      "source_chunk_hash": "ea22025db26f57ef304b083ee570ea48",
+      "chunk_preview": "体活动；冬季户外活动时仅暴露面、手部，注意身体保暖。年长儿除恶劣天气外，鼓励多在户外玩耍。 2.  皮肤锻炼 （1） 婴儿皮肤按摩：按摩时可用少量婴儿润肤霜使之"
+    },
+    {
+      "question": "《儿科学》第10版教材的主编是哪几位？",
+      "reference": "《儿科学》第10版主编为黄国英、孙锟、罗小平，主审为王卫平。",
+      "cross_subject": false,
+      "source_doc": "儿科学",
+      "category": "儿科学",
+      "source_chunk_hash": "d2b6f02aebf7efcfe8da1675a1034fdb",
+      "chunk_preview": "二 儿科学 Pediatrics 第 版10 主 审  |  王卫平 主 编  |  黄国英　孙　锟　罗小平 副  主  编  |  李　秋　杜立中　母得志　钱"
+    },
+    {
+      "question": "肿瘤细胞多药耐药（MDR）的共同特点有哪些？",
+      "reference": "多药耐药一般针对分子量为300～900kDa的亲脂性药物，药物通过被动扩散进入细胞；耐药细胞中药物积聚比敏感细胞少，细胞内药物浓度不足以产生细胞毒作用；耐药细胞膜上多出现P糖蛋白（P-gp）跨膜蛋白。",
+      "cross_subject": true,
+      "source_doc": "药理学(第10版)",
+      "category": "药理学",
+      "source_chunk_hash": "9603f899d68868eee06b55add7c2c5bf",
+      "chunk_preview": "428 第四十九章  抗恶性肿瘤药 滞于某时相（如 G1 期），待药物作用消失后，肿瘤细胞即同步化（synchronization）进入下一时相，再通 过作用于"
+    },
+    {
+      "question": "吗啡产生耐受性的原因是什么？",
+      "reference": "吗啡耐受性的产生可能与阿片受体下调、抑制腺苷酸环化酶活性作用减弱以及孤啡肽生成增加拮抗阿片类药物作用有关；常规剂量连用2～3周即可产生耐受性。",
+      "cross_subject": true,
+      "source_doc": "药理学(第10版)",
+      "category": "药理学",
+      "source_chunk_hash": "06657d39b4140465ec10226717da004e",
+      "chunk_preview": "周阻力，减轻心脏前、后负荷，有利于肺水肿的消除；其镇静作用又有利于消除患者的焦虑、恐惧情绪。 此外，吗啡降低呼吸中枢对 CO2 的敏感性，减弱过度的反射性呼吸兴"
+    },
+    {
+      "question": "职业卫生服务中，作业者健康监护包括哪些健康检查？",
+      "reference": "作业者健康监护包括就业前健康检查、定期检查、更换工作前检查、脱离工作时检查、病伤休假后复工前检查和意外事故接触者检查等。",
+      "cross_subject": false,
+      "source_doc": "预防医学第8版",
+      "category": "proventive",
+      "source_chunk_hash": "5664536e68f76cd99e76364e08ffcfdf",
+      "chunk_preview": "劳动者都能拥有最高且能达到健康标准的基本权利。为达到这一目标，就应保证世界上所有工作场 所的所有劳动者，不分年龄、性别、民族、职业、就业形势或劳动场所的规模或位"
+    },
+    {
+      "question": "《国家慢性病综合防控示范区建设管理办法》是哪一年制定的？其主要目标是什么？",
+      "reference": "2016年制定。主要目标是坚持以人民健康为中心，强化政府责任，创造和维护健康的社会环境，培育适合不同地区特点的慢性病综合防控模式，总结推广经验，引领带动全国慢性病综合防控工作，降低因慢性病造成的过早死亡，有效控制慢性病疾病负担增长，推进健康中国建设。",
+      "cross_subject": false,
+      "source_doc": "预防医学第8版",
+      "category": "proventive",
+      "source_chunk_hash": "bb41446203e0bb3c632642445454d7f2",
+      "chunk_preview": "79.0 三、  中国慢性病综合防控示范区 中国慢性病管理主要以三级预防为主，由医院诊疗、社区管理和自我健康促进协同管理，开展慢 性病的早期筛查和居民健康教育，"
+    },
+    {
+      "question": "硬脑膜动静脉瘘（DAVF）最可靠的确诊手段是什么？",
+      "reference": "DSA（数字减影血管造影）是确诊硬脑膜动静脉瘘最可靠的手段。因DAVF血供相当丰富，应行全脑六血管（双侧颈内动脉、颈外动脉及其分支和双侧椎动脉）造影，有时还需行双侧甲状颈干、肋颈干等动脉造影，以防漏诊。",
+      "cross_subject": true,
+      "source_doc": "外科学(第10版)",
+      "category": "外科学",
+      "source_chunk_hash": "4a28e29d2ba1830aee9d9b585ef67029",
+      "chunk_preview": "管贴敷术（encephaloduroarteriosynangiosis，EDAS）等。 急性脑内出血造成脑压迫者应紧急手术清除血肿。单纯脑室内出血可行侧脑室额"
+    },
+    {
+      "question": "抗C-erbB2抗体类药物包括哪些药物？主要适用于哪些肿瘤的治疗？",
+      "reference": "抗C-erbB2抗体包括曲妥珠单抗、帕妥珠单抗及一些ADC药物；这类药物在人表皮生长因子受体2（HER2）阳性乳腺癌、胃癌、尿路上皮癌中广泛应用。",
+      "cross_subject": true,
+      "source_doc": "外科学(第10版)",
+      "category": "外科学",
+      "source_chunk_hash": "0e9fa97529e8c535c6d26fbbe5809d6e",
+      "chunk_preview": "性各不相同，并且由于其分子小，可以更好地结合更广泛的胞内和胞外靶点，此类药物一般为口服 给药。 94 第一篇  外科学基础 （1）  小分子靶向药物：包括多激酶"
+    }
+  ]
+}

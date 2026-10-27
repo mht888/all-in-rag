@@ -1,39 +1,189 @@
-# LangChain 核心依赖
-langchain-core>=0.3.0
-langchain-text-splitters>=0.3.0
-langchain-huggingface>=0.3.0
-langchain-community>=0.3.0
-langchain-openai>=0.2.0
+# ============================================================
+# 医学RAG项目依赖 —— cook-rag-1 已验证环境全量冻结清单
+#
+# 重要: 本清单是实测可运行环境的完整克隆（含全部传递依赖）。
+#       该版本组合为逐包升级形成的历史状态，包间存在 metadata 声明冲突
+#      （如 langchain-text-splitters 0.3.8 声明 langchain-core<1.0，与已装
+#        langchain-core 1.6.12 冲突），正常依赖解析必然报 ResolutionImpossible，
+#       因此必须使用 --no-deps 安装。
+#
+# 安装步骤（medical 为空环境时的完整流程，共 4 步）:
+#   conda create -n medical python=3.12 -y
+#   conda activate medical
+#   1. pip install --no-deps -r requirements.txt
+#   2. pip install "unstructured[pdf]==0.18.11"      # 正常解析补齐 PDF extras
+#      （pi_heif / pdf2image / unstructured-inference 等为 partition_pdf
+#        顶层 import 必需，主清单未含，cook-rag-1 从未走过 partition_pdf）
+#   3. pip install pdfminer.six==20250506             # 锁定 unstructured 0.18.11
+#      配套版本（新版会移除 psexceptions 等模块，老版缺少 open_filename，
+#      均导致 ImportError——unstructured unpinned 声明必须手动锁此版本）
+#   4. 安装 CUDA 版 torch + torchvision（成对安装，版本号与主清单一致，见下方注意）
+#
+# 注意:
+#   - torch 必须用 CUDA 版，且必须与 torchvision 成对装同一种构建，
+#     版本号与主清单保持一致（torch 2.14.1 / torchvision 0.29.1）。
+#     历史教训：只把 torch 换成 CUDA 版、而 torchvision 仍是第 2 步带进来的
+#     CPU 版时，Windows 下二者 DLL 冲突，加载 bge-m3 时进程退出
+#     exit code 3221225477（0xC0000005 访问违例）。
+#     正确安装（已实测，驱动 CUDA 13.x / RTX 40 系可用）:
+#         从 https://download.pytorch.org/whl/cu130/ 下载成对的 wheel 后
+#         pip install --no-deps torch-2.14.1+cu130-cp312-cp312-win_amd64.whl \
+#                        torchvision-0.29.1+cu130-cp312-cp312-win_amd64.whl
+#     （pip 直连 download-r2.pytorch.org 网络不稳时，可用 curl 下 wheel 再本地装）
+#   - 不要安装 torchaudio（会导致加载错误）
+#   - 本清单包含 cook-rag-1 的全部包（含 streamlit 等本项目用不到的包，
+#     保留是为零偏差克隆，避免误删间接依赖）
+#   - 升级任何包前慎重: 版本组合是整体验证的，动一个可能全崩
+# ============================================================
 
-# 向量检索
-faiss-cpu>=1.7.0
-
-# 文档处理
-unstructured[pdf]>=0.18.0
+aiofiles==25.1.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.5
+aiosignal==1.4.0
+altair==6.3.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+attrs==26.1.0
+backoff==2.2.1
+beautifulsoup4==4.15.0
+certifi==2026.7.22
+charset-normalizer==3.5.2
+click==8.5.0
+cloudpickle==3.1.2
+colorama==0.4.6
+coloredlogs==15.0.1
+dataclasses-json==0.6.7
+defusedxml==0.7.1
+distro==1.9.0
+emoji==2.16.0
+faiss-cpu==1.15.1
+filelock==4.2.0
+filetype==1.2.0
+flatbuffers==25.12.19
+frozenlist==1.8.0
+fsspec==2026.9.0
+h11==0.16.0
+hf-xet==1.7.0
+html5lib==1.1
+httpcore==1.0.9
+httpcore2==2.13.1
+httpx==0.28.1
+httpx-sse==0.4.3
+httpx2==2.13.1
+huggingface_hub==1.33.0
+humanfriendly==10.0
+idna==3.20
+itsdangerous==2.2.0
+Jinja2==3.1.6
+jiter==0.17.0
+joblib==1.6.0
+jsonpatch==1.35
+jsonpointer==3.2.1
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+langchain==0.3.26
+langchain-community==0.3.27
+langchain-core==1.6.12
+langchain-huggingface==0.3.1
+langchain-openai==1.7.2
+langchain-protocol==0.0.19
+langchain-text-splitters==0.3.8
+langchain-unstructured==0.1.6
+langdetect==1.0.9
+langsmith==0.14.11
+lazy_loader==0.4
+lxml==6.1.3
+Markdown==3.8.2
+markdown-it-py==4.2.0
+MarkupSafe==3.0.4
+marshmallow==3.26.2
+mdurl==0.1.2
+mpmath==1.3.0
+multidict==7.1.0
+mypy_extensions==1.1.0
+narwhals==2.27.1
+networkx==3.7
+nltk==3.10.3
+numpy==2.5.4
+olefile==0.47
+onnxruntime==1.31.0
+openai==3.35.1
+orjson==3.13.0
+packaging==25.0
+pandas==3.0.6
+pillow==12.3.0
+propcache==0.5.4
+protobuf==7.36.2
+psutil==7.2.2
+pyarrow==26.0.0
+pydantic==2.14.1
+pydantic-settings==2.16.0
+pydantic_core==2.50.1
+pydeck==0.9.3
+Pygments==2.21.0
+pypdf==6.20.1
+pypdfium2==5.14.0
+pyreadline3==3.5.6
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+python-iso639==2026.7.23
+python-magic==0.4.27
+python-multipart==0.0.32
+python-oxmsg==0.0.2
+PyYAML==6.0.3
+# pymupdf: medical_rag 的 PDF 备用提取方案（cook-rag-1 没有此包，补装；
+# wheel 自包含，--no-deps 下可正常工作）
 pymupdf>=1.24.0
-
-# 工具库
-python-dotenv>=1.0.0
-numpy>=1.24.0
-
-# 嵌入模型
-sentence-transformers>=2.2.0
-transformers>=4.30.0
-
-# BM25 检索
-rank-bm25>=0.2.2
-# PyTorch 安装说明：
-# 请根据你的 CUDA 版本选择对应的安装命令（查看 CUDA 版本：nvidia-smi）：
-# 注意：不要安装 torchaudio，项目不需要且可能导致加载错误
-#
-# CUDA 12.4（推荐，最新）:
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-#
-# CUDA 12.1:
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-#
-# CUDA 11.8:
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-#
-# CPU 版本（默认，如果不需要 GPU 加速）:
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+rank-bm25==0.2.2
+RapidFuzz==3.14.6
+referencing==0.37.0
+regex==2026.9.29
+requests==2.34.2
+requests-toolbelt==1.0.0
+rich==15.0.0
+rpds-py==2026.9.1
+safetensors==0.8.0
+scikit-learn==1.9.1
+scipy==1.18.1
+sentence-transformers==6.1.0
+setuptools==84.0.0
+shellingham==1.5.4
+six==1.17.0
+sniffio==1.3.1
+soupsieve==3.0.3
+SQLAlchemy==2.1.4
+starlette==1.9.0
+streamlit==1.66.0
+sympy==1.14.0
+tenacity==9.2.1
+threadpoolctl==3.7.0
+tiktoken==0.14.0
+tokenizers==0.23.3
+# PDF 解析链补充（partition_pdf 顶层 import 必需；unstructured[pdf] 见 u 区，
+# 安装流程第 2/3 步，此处固定的是配套传递依赖版本）
+pdfminer.six==20250506
+cryptography==50.0.2
+cffi==2.1.1
+pycparser==3.12
+tqdm==4.70.1
+transformers==5.20.0
+truststore==0.10.5
+typer==0.27.3
+typing-inspect==0.9.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.5
+unstructured[pdf]==0.18.11
+unstructured-client==0.46.2
+urllib3==2.8.0
+uuid_utils==0.17.1
+uvicorn==0.54.0
+watchdog==6.0.0
+webencodings==0.6.1
+websockets==17.2
+wheel==0.47.0
+wrapt==2.5.1
+xxhash==4.0.1
+yarl==1.25.1
+zstandard==0.25.0
